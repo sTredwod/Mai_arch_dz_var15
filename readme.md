@@ -148,10 +148,3 @@
 
 ---
 
-## Генерация PlantUML из Structurizr DSL (Docker)
-
-Из корня проекта (где лежит `workspace.dsl`):
-
-```shell
-docker run --rm -v "%cd%":/work structurizr/cli export -workspace /work/workspace.dsl -format plantuml -output /work/puml
-docker run --rm -v "%cd%":/work plantuml/plantuml -tpng /work/puml
