@@ -1,6 +1,6 @@
 workspace {
     name "ДЗ-01 Вариант 15 — Управление библиотекой"
-    description "C4 (Structurizr DSL): C1 System Context, C2 Container, Dynamic для сценария выдачи книги"
+    description "Документирование архитектуры в Structurizr: C1, C2 и 1 Dynamic (выдача книги)"
 
     !identifiers hierarchical
 
@@ -9,142 +9,171 @@ workspace {
             architect "Ilya"
         }
 
-        # Роли пользователей
+        // Роли
         reader = person "Читатель" {
-            description "Ищет книги и смотрит список своих выдач."
+            description "Ищет книги и просматривает список своих выдач."
         }
 
         librarian = person "Библиотекарь" {
             description "Добавляет книги, оформляет выдачу и возврат."
         }
 
-        # Внешние системы
+        // Внешние системы
         notify = softwareSystem "Сервис уведомлений" {
-            description "Отправляет уведомления пользователям (email/SMS/мессенджер)."
+            description "Внешний сервис отправки уведомлений (email/SMS/мессенджер)."
+            tags "External"
         }
 
         identity = softwareSystem "Identity Provider" {
-            description "Авторизация/аутентификация пользователей (OIDC/OAuth2)."
+            description "Внешний провайдер авторизации/аутентификации (OIDC/OAuth2)."
+            tags "External"
         }
 
         isbn = softwareSystem "ISBN Metadata Provider" {
             description "Внешний источник метаданных книги по ISBN (название, автор, издательство)."
+            tags "External"
         }
 
-        # Наша система
+        // Основная система (вариант 15)
         library_system = softwareSystem "Library Management System" {
             description "Система управления библиотекой: пользователи, книги, выдачи/возвраты."
 
-            # Хранилище
-            db = container "База данных" {
-                technology "PostgreSQL"
-                tags "db"
-                description "Хранение данных: User, Book, Loan."
+            # UI
+            reader_web = container "Reader Web UI" {
+                technology "Web UI (React)"
+                tags "web"
+                description "Поиск книг, просмотр своих выдач."
             }
 
-            # Поиск
-            search = container "Search Index" {
-                technology "Elasticsearch"
-                tags "search"
-                description "Индекс для быстрого поиска книг (по названию/автору/ISBN)."
+            staff_web = container "Staff Web UI" {
+                technology "Web UI (React)"
+                tags "web"
+                description "Добавление книг, выдача/возврат."
             }
 
-            # Сервисы (контейнерный уровень)
+            // Точка входа / BFF
+            api_gateway = container "API Gateway / BFF" {
+                technology "Java 17 (Spring Boot)"
+                tags "java"
+                description "Единая точка входа для UI: маршрутизация запросов в сервисы."
+            }
+
+            // Сервисы (контейнерный уровень)
             user_service = container "User Service" {
                 technology "Java 17 (Spring Boot)"
                 tags "java"
-                description "Создание/поиск пользователей."
-
-                -> db "CRUD пользователей" "JDBC/SQL TCP:5432"
+                description "Создание пользователя, поиск пользователя."
             }
 
             catalog_service = container "Catalog Service" {
                 technology "Java 17 (Spring Boot)"
                 tags "java"
-                description "Добавление/поиск книг, обновление карточек."
-
-                -> db "CRUD книг" "JDBC/SQL TCP:5432"
-                -> search "Обновление индекса поиска" "REST HTTPS:443"
-                -> isbn "Загрузка метаданных по ISBN" "REST HTTPS:443"
+                description "Добавление книги, поиск книг."
             }
 
             loan_service = container "Loan Service" {
                 technology "Java 17 (Spring Boot)"
                 tags "java"
-                description "Выдача/возврат, список выданных книг пользователю."
-
-                -> db "CRUD выдач/возвратов, статус книги" "JDBC/SQL TCP:5432"
-                -> notify "Уведомления о выдаче/сроке возврата" "REST HTTPS:443"
+                description "Создание выдачи, список выданных книг пользователю, возврат книги."
             }
 
-            # Backend entrypoint (после сервисов, чтобы ссылки работали)
-            api_gateway = container "API Gateway / BFF" {
-                technology "Java 17 (Spring Boot)"
-                tags "java"
-                description "Единая точка входа для UI, маршрутизация запросов в сервисы."
-
-                -> identity "Проверка токена/логин" "OIDC HTTPS:443"
-                -> user_service "Запросы по пользователям" "REST HTTPS:443"
-                -> catalog_service "Запросы по книгам/поиску" "REST HTTPS:443"
-                -> loan_service "Запросы по выдачам" "REST HTTPS:443"
+            # Хранилища
+            db = container "Database" {
+                technology "PostgreSQL"
+                tags "db"
+                description "Хранение: User, Book, Loan."
             }
 
-            # UI
-            reader_web = container "Reader Web UI" {
-                technology "React"
-                tags "web"
-                description "Интерфейс читателя: поиск книг, просмотр своих выдач."
+            search = container "Search Index" {
+                technology "Elasticsearch"
+                tags "search"
+                description "Индекс для быстрого поиска книг."
             }
 
-            staff_web = container "Staff Web UI" {
-                technology "React"
-                tags "web"
-                description "Интерфейс библиотекаря: добавление книг, выдача/возврат."
-            }
+            # Связи UI -> BFF
+            reader_web -> api_gateway "Запросы читателя" "REST HTTPS:443"
+            staff_web  -> api_gateway "Запросы библиотекаря" "REST HTTPS:443"
 
-            # Связи UI -> gateway
-            reader_web -> api_gateway "REST API (читатель)" "REST HTTPS:443"
-            staff_web  -> api_gateway "REST API (библиотекарь)" "REST HTTPS:443"
+            # BFF -> внешняя авторизация
+            api_gateway -> identity "Проверка токена/логин" "OIDC HTTPS:443"
+
+            # BFF -> сервисы
+            api_gateway -> user_service "API пользователей (/users/*)" "REST HTTPS:443"
+            api_gateway -> catalog_service "API книг и поиска (/books/*)" "REST HTTPS:443"
+            api_gateway -> loan_service "API выдач/возвратов (/loans/*)" "REST HTTPS:443"
+
+            # Сервисы -> хранилища / интеграции
+            user_service -> db "Данные пользователей" "JDBC/SQL TCP:5432"
+
+            catalog_service -> db "Данные книг" "JDBC/SQL TCP:5432"
+            catalog_service -> search "Обновление индекса поиска" "REST HTTPS:443"
+            catalog_service -> isbn "Загрузка метаданных по ISBN" "REST HTTPS:443"
+
+            loan_service -> db "Данные выдач и статусы книг" "JDBC/SQL TCP:5432"
+            loan_service -> notify "Уведомление о выдаче/сроке возврата" "REST HTTPS:443"
         }
 
-        # Связи людей -> UI (чтобы C1 был понятнее)
-        reader -> library_system.reader_web "Поиск книг, просмотр своих выдач" "HTTPS:443"
-        librarian -> library_system.staff_web "Добавление книг, выдача/возврат" "HTTPS:443"
+        # Люди -> UI (для понятного C1)
+        reader -> library_system.reader_web "Ищет книги, смотрит свои выдачи" "HTTPS:443"
+        librarian -> library_system.staff_web "Добавляет книги, оформляет выдачу/возврат" "HTTPS:443"
     }
 
     views {
         properties {
             structurizr.sort created
             structurizr.tooltips true
+            plantuml.format "svg"
+            kroki.format "svg"
         }
 
         themes default
 
-        # C1: Контекст
-        systemContext library_system "C1" {
-            include *
-            autoLayout
+        # C1
+        systemContext library_system "C1-SystemContext" {
+            include reader
+            include librarian
+            include library_system
+            include notify
+            include identity
+            include isbn
+            autolayout lr
+            title "C1 – Контекст системы: библиотека"
+            description "Читатель и библиотекарь взаимодействуют с системой через веб-интерфейсы. Система интегрируется с внешним провайдером авторизации, источником метаданных по ISBN и сервисом уведомлений."
         }
 
-        # C2: Контейнеры
-        container library_system "C2" {
+        # C2
+        container library_system "C2-Containers" {
             include *
-            autoLayout
+            autolayout lr
+            title "C2 – Диаграмма контейнеров: библиотека"
+            description "Контейнеры покрывают операции варианта 15: пользователи, книги и выдачи/возвраты. Указаны технологии контейнеров и протоколы взаимодействия."
         }
 
-        # Dynamic: сценарий "Выдача книги пользователю"
-        dynamic library_system "D1_IssueBook" {
+        # D1 
+        dynamic library_system "D1-IssueBook" {
+            title "D1 – Динамика: выдача книги пользователю"
+            description "Библиотекарь оформляет выдачу. Система проверяет токен, получает пользователя и книгу, создаёт выдачу, обновляет статус книги и отправляет уведомление."
+
             librarian -> library_system.staff_web "Оформляет выдачу книги" "HTTPS:443"
-            library_system.staff_web -> library_system.api_gateway "POST /loans" "REST HTTPS:443"
+            library_system.staff_web -> library_system.api_gateway "POST /loans {userId, bookId}" "REST HTTPS:443"
 
             library_system.api_gateway -> identity "Проверка токена" "OIDC HTTPS:443"
-            library_system.api_gateway -> library_system.user_service "GET /users/{id}" "REST HTTPS:443"
-            library_system.api_gateway -> library_system.catalog_service "GET /books/{id} (проверка доступности)" "REST HTTPS:443"
-            library_system.api_gateway -> library_system.loan_service "POST /loans (создать выдачу)" "REST HTTPS:443"
+            identity -> library_system.api_gateway "OK (token valid)" "OIDC HTTPS:443"
 
+            library_system.api_gateway -> library_system.user_service "GET /users/{id}" "REST HTTPS:443"
+            library_system.user_service -> library_system.api_gateway "200 OK (user)" "REST HTTPS:443"
+
+            library_system.api_gateway -> library_system.catalog_service "GET /books/{id} (availability)" "REST HTTPS:443"
+            library_system.catalog_service -> library_system.api_gateway "200 OK (book available)" "REST HTTPS:443"
+
+            library_system.api_gateway -> library_system.loan_service "POST /loans" "REST HTTPS:443"
             library_system.loan_service -> library_system.db "INSERT loan + UPDATE book status" "JDBC/SQL TCP:5432"
-            library_system.loan_service -> notify "Уведомление пользователю" "REST HTTPS:443"
-            autoLayout
+            library_system.loan_service -> notify "Notify(userId, dueDate)" "REST HTTPS:443"
+
+            library_system.loan_service -> library_system.api_gateway "200 OK {loanId}" "REST HTTPS:443"
+            library_system.api_gateway -> library_system.staff_web "200 OK {loanId}" "REST HTTPS:443"
+
+            autolayout lr
         }
     }
 }
