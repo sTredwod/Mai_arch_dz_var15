@@ -51,14 +51,14 @@ workspace {
                 description "Добавление книг, выдача/возврат."
             }
 
-            // Точка входа / BFF
+            // Точка входа
             api_gateway = container "API Gateway / BFF" {
                 technology "Java 17 (Spring Boot)"
                 tags "java"
                 description "Единая точка входа для UI: маршрутизация запросов в сервисы."
             }
 
-            // Сервисы (контейнерный уровень)
+            // Сервисы на контейнерном уровне
             user_service = container "User Service" {
                 technology "Java 17 (Spring Boot)"
                 tags "java"
@@ -90,11 +90,11 @@ workspace {
                 description "Индекс для быстрого поиска книг."
             }
 
-            # Связи UI -> BFF
+            # Связи UI - BFF
             reader_web -> api_gateway "Запросы читателя" "REST HTTPS:443"
             staff_web  -> api_gateway "Запросы библиотекаря" "REST HTTPS:443"
 
-            # BFF -> внешняя авторизация
+            # BFF - внешняя авторизация
             api_gateway -> identity "Проверка токена/логин" "OIDC HTTPS:443"
 
             # BFF -> сервисы
@@ -102,7 +102,7 @@ workspace {
             api_gateway -> catalog_service "API книг и поиска (/books/*)" "REST HTTPS:443"
             api_gateway -> loan_service "API выдач/возвратов (/loans/*)" "REST HTTPS:443"
 
-            # Сервисы -> хранилища / интеграции
+            # Сервисы - хранилища / интеграции
             user_service -> db "Данные пользователей" "JDBC/SQL TCP:5432"
 
             catalog_service -> db "Данные книг" "JDBC/SQL TCP:5432"
@@ -113,7 +113,7 @@ workspace {
             loan_service -> notify "Уведомление о выдаче/сроке возврата" "REST HTTPS:443"
         }
 
-        # Люди -> UI (для понятного C1)
+        # Люди - UI (для понятного C1)
         reader -> library_system.reader_web "Ищет книги, смотрит свои выдачи" "HTTPS:443"
         librarian -> library_system.staff_web "Добавляет книги, оформляет выдачу/возврат" "HTTPS:443"
     }
