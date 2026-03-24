@@ -432,7 +432,7 @@ Middleware:
 **Запуск**
 
 ```bash
-bash -x ./tests/smoke_tests.sh
+Mai_arch_dz_var15/Laba2/library-service/library_service/tests$ bash smoke_tests.sh
 ```
 
 ### Error tests
@@ -447,7 +447,7 @@ bash -x ./tests/smoke_tests.sh
 **Запуск**
 
 ```bash
-bash -x ./tests/error_tests.sh
+Mai_arch_dz_var15/Laba2/library-service/library_service/tests$ bash error_tests.sh
 ```
 
 ---
