@@ -529,7 +529,7 @@ make build-debug
 ./build-debug/library_service -c configs/static_config.yaml
 ```
 
-### Запуск через Docker Compose
+### Запуск через Docker Compose (если будет запускаться долго, подождите)
 
 Из каталога `library_service`  
 **(именно нижнее подчёркивание, то есть `/Mai_arch_dz_var15/Laba2/library-service/library_service`)**
