@@ -128,12 +128,14 @@
 **Request**
 
 ```json
-{
-  "login": "reader1",
-  "password": "12345",
-  "first_name": "Ilya",
-  "last_name": "Ivanov"
-}
+curl -i -X POST http://127.0.0.1:8080/users \
+  -H "Content-Type: application/json" \
+  -d '{
+    "login": "ilya",
+    "first_name": "Ilya",
+    "last_name": "Gubenkov",
+    "password": "123456"
+  }'
 ```
 
 **Response**
